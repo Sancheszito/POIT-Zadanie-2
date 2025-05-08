@@ -71,6 +71,7 @@
       <form action="/delete-session/{{ session_id }}" method="POST" onsubmit="return confirm('Naozaj chcete vymazať celé meranie {{ session_id }}?');">
         <button type="submit">Vymazať toto meranie</button>
       </form>
+      <a href="/download/{{ session_id }}">Stiahnuť CSV</a>
     </div>
 
     <!-- Tabs -->
@@ -89,7 +90,13 @@
           </tr>
           {% for row in data %}
             <tr>
-              <td>{{ row[0] if row[0] is not none else '-' }}</td>
+              <td>
+                {% if row[0] is not none %}
+                  {{ row[0]|datetimeformat }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
           <td>{{ row[1] if row[1] is not none else '-' }}</td>
             </tr>
           {% endfor %}
@@ -101,7 +108,28 @@
         <div id="graph" style="width:100%;max-width:800px;height:400px;"></div>
         <script>
           const data = {{ data|tojson }};
-          const timestamps = data.map(row => row[0]);
+          const timestamps = data.map(row => {
+            const raw = row[0];
+            let date;
+
+            // Ošetrenie rôznych formátov:
+            if (typeof raw === 'number') {
+              // Ak je to číslo (pravdepodobne timestamp v sekundách alebo ms)
+              date = new Date(raw < 1e12 ? raw * 1000 : raw);
+            } else if (typeof raw === 'string') {
+              // Ak je to string vo formáte ISO alebo SQL datetime
+              date = new Date(raw);
+            } else {
+              return null; // neplatný formát
+            }
+
+            // Vráť lokalizovaný reťazec pre x-ovú os
+            return date.toLocaleString('sk-SK', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit',
+              hour12: false
+            });
+          }).filter(x => x !== null);  // odstráni prípadné neplatné dátumy
           const distances = data.map(row => row[1]);
 
           const trace = {

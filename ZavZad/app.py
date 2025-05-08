@@ -70,6 +70,27 @@ def delete_session(session_id):
     except Exception as e:
         return f"Chyba pri mazaní merania: {e}"
 
+@app.route('/download/<int:session_id>')
+def download_csv(session_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT timestamp, distance FROM measurements WHERE session_id = %s", (session_id,))
+    data = cur.fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['timestamp', 'distance'])
+
+    for row in data:
+        writer.writerow(row)
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment;filename=session_{session_id}.csv'}
+    )
 
 @app.route('/start')
 def start_measurement():
@@ -80,10 +101,51 @@ def start_measurement():
     except Exception as e:
         return f"Chyba pri spúšťaní: {e}"
 
+@app.route('/stop')
+def stop_measurement():
+    global measuring
+    measuring = False  # alebo iný mechanizmus na ukončenie vlákna
+    print("Meranie ukončené.")
+    return redirect('/')
+
 @app.route('/live')
 def live():
     return render_template('live.html')
     
+@app.route('/upload_csv', methods=['POST'])
+def upload_csv():
+    global latest_uploaded_csv
+
+    if 'csv_file' not in request.files:
+        return "Nebyl vybratý žiadny súbor"
+
+    file = request.files['csv_file']
+    if file.filename == '':
+        return "Nebyl vybratý žiadny súbor"
+
+    try:
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_input = csv.DictReader(stream)
+
+        uploaded_data = []
+        for row in csv_input:
+            try:
+                dt = datetime.datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S")
+                ts = int(time.mktime(dt.timetuple()))
+                dist = float(row['distance'])
+                uploaded_data.append((ts, dist))
+            except Exception as e:
+                print("Chyba pri parsovaní riadku:", e)
+
+        if uploaded_data:
+            latest_uploaded_csv = uploaded_data
+            return redirect('/session_csv')
+        else:
+            return "CSV neobsahuje žiadne platné dáta."
+
+    except Exception as e:
+        return f"Chyba pri nahrávaní: {e}"
+
 @app.route('/session_csv')
 def session_csv():
     global latest_uploaded_csv
@@ -91,6 +153,13 @@ def session_csv():
         return "Žiadne dáta neboli nahrané."
 
     return render_template('session.html', data=latest_uploaded_csv, session_id="CSV")
+#prevod cisla na timestamp na datumovy format pri upload CSV
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    try:
+        return datetime.datetime.fromtimestamp(int(value)).strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return value  # Ak sa nedá previesť, vráti pôvodnú hodnotu
     
 # === SocketIO Events ===
 @socketio.on('new_data')

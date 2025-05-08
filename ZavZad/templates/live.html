@@ -44,14 +44,14 @@
         height: 300,
         units: "cm",
         minValue: 0,
-        maxValue: 2000,
+        maxValue: 1000,
         majorTicks: [
-          "0", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"
+          "0", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"
         ],
-        minorTicks: 2,
+        minorTicks: 5,
         strokeTicks: true,
         highlights: [
-          { from: 1500, to: 2000, color: "rgba(200, 50, 50, .75)" }
+          { from: 900, to: 1000, color: "rgba(200, 50, 50, .75)" }
         ],
         colorPlate: "#fff",
         borderShadowWidth: 0,
@@ -59,15 +59,16 @@
         needleType: "arrow",
         needleWidth: 2,
         needleCircleSize: 7,
-        animationDuration: 500,
-        animationRule: "linear"
+        animationDuration: 250,
+        animationRule: "linear",
+        valueBox: true
       }).draw();
 
       // Spracovanie prijatých dát
       socket.on('broadcast_data', function (data) {
      
         // Tab 1 - Live výpis
-        $('#live-values').prepend(`<div>${data.timestamp} - ${data.distance} cm</div>`);
+        $('#live-values').prepend(`<div>${data.timestamp} | ${data.session_id} | ${data.distance} cm</div>`);
 
         // Tab 2 - Graf
         timestamps.push(data.timestamp);
@@ -95,10 +96,6 @@
   <div class="button-back">
     <a href="/">⟵ Späť na hlavnú stránku</a>
   </div>
-  <!--div> <form action="/start" method="get">
-        <button type="submit">Start</button>
-    </form>
-  </div-->
   <h1>Live meranie vzdialenosti</h1>
 
   <div id="tabs">
