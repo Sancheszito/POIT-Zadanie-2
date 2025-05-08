@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Meranie</title>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <style>
+    .button-back {
+      margin-bottom: 15px;
+    }
+
+    .button-back a {
+      display: inline-block;
+      padding: 8px 12px;
+      background-color: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+
+    .button-back a:hover {
+      background-color: #5a6268;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
+  <script>
+    let gauge;
+
+    $(function () {
+      $("#tabs").tabs();
+
+      const socket = io();
+      const timestamps = [];
+      const distances = [];
+
+      // Vytvorenie ručičkového ukazovateľa (gauge)
+      gauge = new RadialGauge({
+        renderTo: 'gaugeCanvas',
+        width: 300,
+        height: 300,
+        units: "cm",
+        minValue: 0,
+        maxValue: 2000,
+        majorTicks: [
+          "0", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"
+        ],
+        minorTicks: 2,
+        strokeTicks: true,
+        highlights: [
+          { from: 1500, to: 2000, color: "rgba(200, 50, 50, .75)" }
+        ],
+        colorPlate: "#fff",
+        borderShadowWidth: 0,
+        borders: false,
+        needleType: "arrow",
+        needleWidth: 2,
+        needleCircleSize: 7,
+        animationDuration: 500,
+        animationRule: "linear"
+      }).draw();
+
+      // Spracovanie prijatých dát
+      socket.on('broadcast_data', function (data) {
+     
+        // Tab 1 - Live výpis
+        $('#live-values').prepend(`<div>${data.timestamp} - ${data.distance} cm</div>`);
+
+        // Tab 2 - Graf
+        timestamps.push(data.timestamp);
+        distances.push(data.distance);
+
+        Plotly.newPlot('graph', [{
+          x: timestamps,
+          y: distances,
+          mode: 'lines+markers',
+          type: 'scatter',
+          name: 'Distance (cm)'
+        }], {
+          title: 'Live Distance Graph',
+          xaxis: { title: 'Time' },
+          yaxis: { title: 'Distance (cm)', range: [0, 2500] }
+        });
+
+        // Tab 3 - Gauge
+        gauge.value = data.distance;
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="button-back">
+    <a href="/">⟵ Späť na hlavnú stránku</a>
+  </div>
+  <!--div> <form action="/start" method="get">
+        <button type="submit">Start</button>
+    </form>
+  </div-->
+  <h1>Live meranie vzdialenosti</h1>
+
+  <div id="tabs">
+    <ul>
+      <li><a href="#tabs-1">Live údaje</a></li>
+      <li><a href="#tabs-2">Graf</a></li>
+      <li><a href="#tabs-3">Ukazovateľ</a></li>
+    </ul>
+
+    <!-- Tab 1: Live údaje -->
+    <div id="tabs-1">
+      <div id="live-values" style="font-family: monospace;"></div>
+    </div>
+
+    <!-- Tab 2: Graf -->
+    <div id="tabs-2">
+      <div id="graph" style="width:100%;max-width:800px;height:400px;"></div>
+    </div>
+
+    <!-- Tab 3: Ručičkový ukazovateľ -->
+    <div id="tabs-3">
+      <canvas id="gaugeCanvas"></canvas>
+    </div>
+  </div>
+</body>
+</html>
