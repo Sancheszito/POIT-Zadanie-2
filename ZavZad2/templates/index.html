@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spustenie merania</title>
+    <style>
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .button-group form {
+            margin: 0;
+        }
+
+        .button-group button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-open {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-close {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-open:hover {
+            background-color: #218838;
+        }
+
+        .btn-close:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spustenie merania</h1>
+
+    <div class="button-group">
+        <form action="/start" method="get">
+            <button type="submit" class="btn-open">OPEN</button>
+        </form>
+        <form action="/stop" method="get">
+            <button type="submit" class="btn-close">CLOSE</button>
+        </form>
+    </div>
+    <!-- CSV nahravanie -->
+   <h2>Nahrať CSV súbor</h2>
+	<form action="/upload_csv" method="post" enctype="multipart/form-data">
+	  <input type="file" name="csv_file" accept=".csv" required>
+	  <button type="submit">Nahrať a zobraziť</button>
+	</form>
+
+
+    <h2>Merania:</h2>
+    <ul>
+        {% for session in sessions %}
+            <li><a href="/session/{{ session[0] }}">Session {{ session[0] }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
