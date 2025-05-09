@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Meranie {{ session_id }}</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      .button-back {
+        margin-bottom: 15px;
+      }
+
+      .button-back a {
+        display: inline-block;
+        padding: 8px 12px;
+        background-color: #6c757d;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+      }
+
+      .button-back a:hover {
+        background-color: #5a6268;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .button-group form,
+      .button-group a {
+        display: inline-block;
+      }
+
+      .button-group button,
+      .button-group a {
+        padding: 8px 12px;
+        background-color: #007BFF;
+        color: white;
+        text-decoration: none;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .button-group button:hover,
+      .button-group a:hover {
+        background-color: #0056b3;
+      }
+    </style>
+    <script>
+      $(function() {
+        $("#tabs").tabs({
+          event: "mouseover"
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Meranie {{ session_id }}</h1>
+
+    <div class="button-back">
+      <a href="/">⟵ Späť na hlavnú stránku</a>
+    </div>
+
+    <div class="button-group">
+      <form action="/delete-session/{{ session_id }}" method="POST" onsubmit="return confirm('Naozaj chcete vymazať celé meranie {{ session_id }}?');">
+        <button type="submit">Vymazať toto meranie</button>
+      </form>
+      <a href="/download/{{ session_id }}">Stiahnuť CSV</a>
+    </div>
+
+    <!-- Tabs -->
+    <div id="tabs">
+      <ul>
+        <li><a href="#tabs-1">Zoznam údajov</a></li>
+        <li><a href="#tabs-2">Graf</a></li>
+      </ul>
+
+      <!-- Tab 1: Zoznam údajov -->
+      <div id="tabs-1">
+        <table border="1">
+          <tr>
+            <th>Timestamp</th>
+            <th>Distance (cm)</th>
+          </tr>
+          {% for row in data %}
+            <tr>
+              <td>
+                {% if row[0] is not none %}
+                  {{ row[0]|datetimeformat }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+          <td>{{ row[1] if row[1] is not none else '-' }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+
+      <!-- Tab 2: Graf -->
+      <div id="tabs-2">
+        <div id="graph" style="width:100%;max-width:800px;height:400px;"></div>
+        <script>
+          const data = {{ data|tojson }};
+          const timestamps = data.map(row => {
+            const raw = row[0];
+            let date;
+
+            // Ošetrenie rôznych formátov:
+            if (typeof raw === 'number') {
+              // Ak je to číslo (pravdepodobne timestamp v sekundách alebo ms)
+              date = new Date(raw < 1e12 ? raw * 1000 : raw);
+            } else if (typeof raw === 'string') {
+              // Ak je to string vo formáte ISO alebo SQL datetime
+              date = new Date(raw);
+            } else {
+              return null; // neplatný formát
+            }
+
+            // Vráť lokalizovaný reťazec pre x-ovú os
+            return date.toLocaleString('sk-SK', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit',
+              hour12: false
+            });
+          }).filter(x => x !== null);  // odstráni prípadné neplatné dátumy
+          const distances = data.map(row => row[1]);
+
+          const trace = {
+            x: timestamps,
+            y: distances,
+            mode: 'lines+markers',
+            type: 'scatter',
+            name: 'Distance (cm)'
+          };
+
+          const layout = {
+            title: 'Distance vs Time',
+            xaxis: { title: 'Timestamp' },
+            yaxis: { title: 'Distance (cm)' }
+          };
+
+          Plotly.newPlot('graph', [trace], layout);
+        </script>
+      </div>
+    </div>
+  </body>
+</html>
